@@ -1,57 +1,48 @@
 <!DOCTYPE html>
 <html>
+<style type="text/css">
+    canvas { background: rgb(55, 55, 55); }
+</style>
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 #version 300 es
 
-in  vec4 aPosition;
-in  vec3 aNormal;
-out vec4 vColor;
+in vec4 aPosition;
+in vec4 aColor;
+in vec2 aTexCoord;
 
-uniform vec4 uAmbientProduct, uDiffuseProduct, uSpecularProduct;
-uniform mat4 uModelViewMatrix;
-uniform mat4 uProjectionMatrix;
-uniform vec4 uLightPosition;
-uniform float uShininess;
+out vec4 vColor;
+out vec2 vTexCoord;
+
+uniform vec3 uTheta;
 
 void main()
 {
+    // Compute the sines and cosines of theta for each of
+    //   the three axes in one computation.
+    vec3 angles = radians(uTheta);
+    vec3 c = cos(angles);
+    vec3 s = sin(angles);
 
+    mat4 rx = mat4(1.0,  0.0,  0.0, 0.0,
+		    0.0,  c.x,  s.x, 0.0,
+		    0.0, -s.x,  c.x, 0.0,
+		    0.0,  0.0,  0.0, 1.0);
 
-    vec3 pos = -(uModelViewMatrix * aPosition).xyz;
+    mat4 ry = mat4(c.y, 0.0, -s.y, 0.0,
+		    0.0, 1.0,  0.0, 0.0,
+		    s.y, 0.0,  c.y, 0.0,
+		    0.0, 0.0,  0.0, 1.0);
 
-    //fixed light postion
+    mat4 rz = mat4(c.z, s.z, 0.0, 0.0,
+		    -s.z,  c.z, 0.0, 0.0,
+		    0.0,  0.0, 1.0, 0.0,
+		    0.0,  0.0, 0.0, 1.0);
 
-    vec3 light = uLightPosition.xyz;
-    vec3 L = normalize(light - pos);
-
-
-    vec3 E = normalize(-pos);
-    vec3 H = normalize(L + E);
-
-    vec4 NN = vec4(aNormal,0);
-
-    // Transform vertex normal into eye coordinates
-
-    vec3 N = normalize((uModelViewMatrix*NN).xyz);
-
-    // Compute terms in the illumination equation
-    vec4 ambient = uAmbientProduct;
-
-    float Kd = max(dot(L, N), 0.0);
-    vec4  diffuse = Kd*uDiffuseProduct;
-
-    float Ks = pow( max(dot(N, H), 0.0), uShininess );
-    vec4  specular = Ks * uSpecularProduct;
-
-    if( dot(L, N) < 0.0 ) {
-	  specular = vec4(0.0, 0.0, 0.0, 1.0);
-    }
-
-    gl_Position = uProjectionMatrix * uModelViewMatrix *aPosition;
-    vColor = ambient + diffuse + specular;
-
-    vColor.a = 1.0;
+    vColor = aColor;
+    vTexCoord = aTexCoord;
+    gl_Position = rz * ry * rx * aPosition;
+    gl_Position.z = -gl_Position.z;
 }
 </script>
 
@@ -61,12 +52,17 @@ void main()
 precision mediump float;
 
 in vec4 vColor;
+in vec2 vTexCoord;
+
 out vec4 fColor;
+
+uniform sampler2D uTextureMap;
 
 void
 main()
 {
-    fColor = vColor;
+    //fColor = vColor * texture(uTextureMap, vTexCoord);
+    fColor = texture(uTextureMap, vTexCoord);
 }
 </script>
 
@@ -74,9 +70,11 @@ main()
 <script type="text/javascript" src="./Common/MVnew.js"></script>
 <script type="text/javascript" src="HW6A.js"></script>
 
+
 <body>
-<canvas id="gl-canvas" width="512" height="512">
+<canvas id="gl-canvas" width="600" height="600">
 Oops ... your browser doesn't support the HTML5 canvas element
 </canvas>
+<img id = "texImage" src = "purple-cobweb.png" hidden></img>
 </body>
 </html>
